@@ -2,6 +2,7 @@ package com.myorg;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
+import software.amazon.awscdk.core.Fn;
 import software.amazon.awscdk.core.RemovalPolicy;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
@@ -17,6 +18,9 @@ import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedTaskI
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.logs.LogGroup;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Service01Stack extends Stack {
     public Service01Stack(final Construct scope, final String id, final Cluster cluster) {
         this(scope, id, null, cluster);
@@ -24,6 +28,12 @@ public class Service01Stack extends Stack {
 
     public Service01Stack(final Construct scope, final String id, final StackProps props, final Cluster cluster) {
         super(scope, id, props);
+
+        Map<String, String> envVariables = new HashMap<>();
+        envVariables.put("SPRING_DATASOURCE_URL", "jdbc:postgresql://"+ Fn.importValue("rds-endpoint")
+                + ":5432/curso-aws1-db");
+        envVariables.put("SPRING_DATASOURCE_USERNAME", "aws");
+        envVariables.put("SPRING_DATASOURCE_PASSWORD", Fn.importValue("rds-password"));
 
         ApplicationLoadBalancedFargateService service01 = ApplicationLoadBalancedFargateService.Builder.create(this, "ALB01")
                 .serviceName("service-01")
@@ -35,7 +45,7 @@ public class Service01Stack extends Stack {
                 .taskImageOptions(
                         ApplicationLoadBalancedTaskImageOptions.builder()
                                 .containerName("curso_aws1")
-                                .image(ContainerImage.fromRegistry("lucasromagnoli/curso_aws1:1.0.0"))
+                                .image(ContainerImage.fromRegistry("lucasromagnoli/curso_aws1:1.1.0"))
                                 .containerPort(8080)
                                 .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()
                                         .logGroup(LogGroup.Builder.create(this, "Service01LogGroup")
@@ -44,6 +54,7 @@ public class Service01Stack extends Stack {
                                                 .build())
                                         .streamPrefix("Service01")
                                         .build()))
+                                .environment(envVariables)
                                 .build())
                 .publicLoadBalancer(true)
                 .build();
